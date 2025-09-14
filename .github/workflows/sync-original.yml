@@ -2,8 +2,7 @@ name: Sync upstream → original
 
 on:
   schedule:
-    # Every Monday at 05:00 UTC (07:00 Zurich in winter; 06:00 during DST)
-    - cron: "0 5 * * 1"
+    - cron: "0 5 * * 1"   # Mondays 05:00 UTC
   workflow_dispatch: {}
 
 permissions:
@@ -13,23 +12,21 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout upstream default branch
-        uses: actions/checkout@v4
+      # 1) Check out my fork
+      - name: Checkout fork
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4 pinned
         with:
-          repository: ed-donner/agents
-          ref: main            # change if upstream uses a different default
           fetch-depth: 0
+          persist-credentials: true
 
-      - name: Configure Git identity
+      # 2) Add upstream and fetch
+      - name: Add upstream and fetch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/ed-donner/agents.git || true
+          git fetch upstream --tags --prune
 
-      - name: Push to your fork's 'original' (mirror upstream)
-        env:
-          GH_REPO: ${{ github.repository }} # andres112/Agents-AI
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 3) Make 'original' exactly match upstream/main
+      - name: Mirror upstream/main → original
         run: |
-          git checkout -B original
-          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
-          git push fork HEAD:original --force
+          git checkout -B original upstream/main
+          git push origin original --force
