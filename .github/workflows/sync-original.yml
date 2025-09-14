@@ -1,0 +1,35 @@
+name: Sync upstream → original
+
+on:
+  schedule:
+    # Every Monday at 05:00 UTC (07:00 Zurich in winter; 06:00 during DST)
+    - cron: "0 5 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout upstream default branch
+        uses: actions/checkout@v4
+        with:
+          repository: ed-donner/agents
+          ref: main            # change if upstream uses a different default
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Push to your fork's 'original' (mirror upstream)
+        env:
+          GH_REPO: ${{ github.repository }} # andres112/Agents-AI
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git checkout -B original
+          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git"
+          git push fork HEAD:original --force
