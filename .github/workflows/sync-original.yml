@@ -2,17 +2,21 @@ name: Sync upstream → original
 
 on:
   schedule:
-    - cron: "0 5 * * 1"   # Mondays 05:00 UTC
+    - cron: "0 5 * * 1"
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
+concurrency:
+  group: sync-original
+  cancel-in-progress: true
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      # 1) Check out my fork
+      # 1) Check out YOUR fork
       - name: Checkout fork
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4 pinned
         with:
@@ -25,8 +29,14 @@ jobs:
           git remote add upstream https://github.com/ed-donner/agents.git || true
           git fetch upstream --tags --prune
 
-      # 3) Make 'original' exactly match upstream/main
+      # 3) Mirror upstream/main → original (force so it's an exact mirror)
       - name: Mirror upstream/main → original
         run: |
           git checkout -B original upstream/main
           git push origin original --force
+
+      # 4) Avoid checkout cleanup tripping on upstream's broken .gitmodules
+      - name: Restore clean working tree (switch back to your fork/main)
+        run: |
+          git checkout -B main origin/main || git checkout --detach
+          git clean -fdx || true
